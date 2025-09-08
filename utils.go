@@ -1,13 +1,15 @@
 package intele
 
 import (
-	"context"
-	tele "gopkg.in/telebot.v3"
-	"strings"
+	"regexp"
 	"time"
+
+	tele "gopkg.in/telebot.v3"
 )
 
-// GetTyped is a helper function for type-safe container access
+// GetTyped is a helper function for type-safe dependency retrieval from a container.
+// It attempts to cast the retrieved value to the specified type T.
+// Returns the zero value and false if the dependency is not found or cannot be cast.
 func GetTyped[T any](container Container, key string) (T, bool) {
 	var zero T
 	val, err := container.Get(key)
@@ -19,7 +21,9 @@ func GetTyped[T any](container Container, key string) (T, bool) {
 	return typed, ok
 }
 
-// GetStorageTyped is a helper function for type-safe storage access
+// GetStorageTyped is a helper function for type-safe value retrieval from storage.
+// It attempts to cast the retrieved value to the specified type T.
+// Returns the zero value and false if the key is not found or cannot be cast.
 func GetStorageTyped[T any](storage Storage, key string) (T, bool) {
 	var zero T
 	val, exists := storage.Get(key)
@@ -31,27 +35,22 @@ func GetStorageTyped[T any](storage Storage, key string) (T, bool) {
 	return typed, ok
 }
 
-// WithTimeout creates a context with timeout for step execution
-func WithTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, timeout)
-}
-
-// IsValidStepID checks if step ID is valid (non-empty and reasonable length)
+// IsValidStepID validates that a step ID is non-empty and within reasonable length limits.
 func IsValidStepID(stepID string) bool {
 	return len(stepID) > 0 && len(stepID) <= 100
 }
 
-// IsValidFlowID checks if flow ID is valid (non-empty and reasonable length)
+// IsValidFlowID validates that a flow ID is non-empty and within reasonable length limits.
 func IsValidFlowID(flowID string) bool {
 	return len(flowID) > 0 && len(flowID) <= 100
 }
 
-// LoggingMiddleware creates middleware that logs step executions
-func LoggingMiddleware(logger func(string, ...interface{})) Middleware {
+// LoggingMiddleware creates middleware that logs step execution timing and results.
+// The provided logger function will be called with formatted messages about step execution.
+func LoggingMiddleware(logger func(format string, args ...interface{})) Middleware {
 	return func(next StepHandler) StepHandler {
 		return func(c tele.Context, ctrl Controller) error {
 			start := time.Now()
-
 			session, _ := ctrl.(*controller)
 			stepID := session.session.Data.CurrentStep
 			userID := session.session.Data.UserID
@@ -59,12 +58,12 @@ func LoggingMiddleware(logger func(string, ...interface{})) Middleware {
 			logger("Executing step %s for user %d", stepID, userID)
 
 			err := next(c, ctrl)
-
 			duration := time.Since(start)
+
 			if err != nil {
 				logger("Step %s failed for user %d after %v: %v", stepID, userID, duration, err)
 			} else {
-				logger("Step %s completed for user %d in %v", stepID, userID, duration)
+				logger("Step %s execution completed for user %d in %v", stepID, userID, duration)
 			}
 
 			return err
@@ -72,16 +71,23 @@ func LoggingMiddleware(logger func(string, ...interface{})) Middleware {
 	}
 }
 
-func ParseCallbackData(c tele.Context) tele.Context {
-	c.Callback().Data = strings.TrimSpace(c.Callback().Data)
-	c.Callback().Unique = strings.TrimSpace(c.Callback().Data)
+// Regex pattern for parsing callback data with unique identifier and optional payload
+var cbackRx = regexp.MustCompile(`^\f([-\w]+)(\|(.+))?$`)
 
-	if strings.Contains(c.Callback().Data, "|") {
-		parts := strings.SplitN(c.Callback().Data, "|", 2)
-		c.Callback().Unique = parts[0]
-		c.Callback().Data = parts[1]
+// ParseCallback parses callback data to extract the unique identifier and payload.
+// Telebot uses a special format for callback data that includes both the unique ID
+// and optional payload data separated by specific delimiters.
+func ParseCallback(c tele.Context) tele.Context {
+	if c.Callback() == nil {
 		return c
 	}
-	c.Callback().Unique = c.Callback().Data
+
+	match := cbackRx.FindAllStringSubmatch(c.Callback().Data, -1)
+	if match != nil {
+		unique, payload := match[0][1], match[0][3]
+		c.Callback().Unique = unique
+		c.Callback().Data = payload
+	}
+
 	return c
 }

@@ -2,11 +2,14 @@ package intele
 
 import "time"
 
+// sessionStorage implements the Storage interface for session-specific data.
+// It provides thread-safe access to session state with automatic persistence.
 type sessionStorage struct {
 	session *Session
 	bus     *FlowBus
 }
 
+// Set stores a value in the session state.
 func (ss *sessionStorage) Set(key string, value interface{}) {
 	ss.session.mu.Lock()
 	defer ss.session.mu.Unlock()
@@ -14,15 +17,15 @@ func (ss *sessionStorage) Set(key string, value interface{}) {
 	if ss.session.Data.State == nil {
 		ss.session.Data.State = make(map[string]interface{})
 	}
+
 	ss.session.Data.State[key] = value
 	ss.session.Data.UpdatedAt = time.Now()
-
-	_ = ss.bus.SaveSession(ss.session.Data.UserID, ss.session)
 }
 
+// GetString retrieves a string value from the session state.
 func (ss *sessionStorage) GetString(key string) (string, bool) {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return "", false
@@ -37,9 +40,10 @@ func (ss *sessionStorage) GetString(key string) (string, bool) {
 	return str, ok
 }
 
+// GetInt retrieves an integer value from the session state.
 func (ss *sessionStorage) GetInt(key string) (int, bool) {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return 0, false
@@ -50,6 +54,7 @@ func (ss *sessionStorage) GetInt(key string) (int, bool) {
 		return 0, false
 	}
 
+	// Handle different numeric types
 	switch v := val.(type) {
 	case int:
 		return v, true
@@ -62,9 +67,10 @@ func (ss *sessionStorage) GetInt(key string) (int, bool) {
 	}
 }
 
+// GetBool retrieves a boolean value from the session state.
 func (ss *sessionStorage) GetBool(key string) (bool, bool) {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return false, false
@@ -79,9 +85,10 @@ func (ss *sessionStorage) GetBool(key string) (bool, bool) {
 	return b, ok
 }
 
+// GetFloat64 retrieves a float64 value from the session state.
 func (ss *sessionStorage) GetFloat64(key string) (float64, bool) {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return 0, false
@@ -92,6 +99,7 @@ func (ss *sessionStorage) GetFloat64(key string) (float64, bool) {
 		return 0, false
 	}
 
+	// Handle different numeric types
 	switch v := val.(type) {
 	case float64:
 		return v, true
@@ -104,9 +112,10 @@ func (ss *sessionStorage) GetFloat64(key string) (float64, bool) {
 	}
 }
 
+// Get retrieves any value from the session state.
 func (ss *sessionStorage) Get(key string) (interface{}, bool) {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return nil, false
@@ -116,6 +125,7 @@ func (ss *sessionStorage) Get(key string) (interface{}, bool) {
 	return val, exists
 }
 
+// Delete removes a value from the session state.
 func (ss *sessionStorage) Delete(key string) {
 	ss.session.mu.Lock()
 	defer ss.session.mu.Unlock()
@@ -126,13 +136,12 @@ func (ss *sessionStorage) Delete(key string) {
 
 	delete(ss.session.Data.State, key)
 	ss.session.Data.UpdatedAt = time.Now()
-
-	_ = ss.bus.SaveSession(ss.session.Data.UserID, ss.session)
 }
 
+// Has checks if a key exists in the session state.
 func (ss *sessionStorage) Has(key string) bool {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return false
@@ -142,19 +151,19 @@ func (ss *sessionStorage) Has(key string) bool {
 	return exists
 }
 
+// Clear removes all data from the session state.
 func (ss *sessionStorage) Clear() {
 	ss.session.mu.Lock()
 	defer ss.session.mu.Unlock()
 
 	ss.session.Data.State = make(map[string]interface{})
 	ss.session.Data.UpdatedAt = time.Now()
-
-	_ = ss.bus.SaveSession(ss.session.Data.UserID, ss.session)
 }
 
+// Data returns a copy of all session state data.
 func (ss *sessionStorage) Data() map[string]interface{} {
-	ss.session.mu.Lock()
-	defer ss.session.mu.Unlock()
+	ss.session.mu.RLock()
+	defer ss.session.mu.RUnlock()
 
 	if ss.session.Data.State == nil {
 		return make(map[string]interface{})
@@ -164,9 +173,11 @@ func (ss *sessionStorage) Data() map[string]interface{} {
 	for k, v := range ss.session.Data.State {
 		data[k] = v
 	}
+
 	return data
 }
 
+// SetData replaces all session state data.
 func (ss *sessionStorage) SetData(data map[string]interface{}) {
 	ss.session.mu.Lock()
 	defer ss.session.mu.Unlock()
@@ -175,7 +186,6 @@ func (ss *sessionStorage) SetData(data map[string]interface{}) {
 	for k, v := range data {
 		ss.session.Data.State[k] = v
 	}
-	ss.session.Data.UpdatedAt = time.Now()
 
-	_ = ss.bus.SaveSession(ss.session.Data.UserID, ss.session)
+	ss.session.Data.UpdatedAt = time.Now()
 }
