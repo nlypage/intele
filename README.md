@@ -71,10 +71,11 @@ go get github.com/nlypage/intele/v2
 package main
 
 import (
-    "github.com/nlypage/intele/v2"
-    "github.com/nlypage/intele/v2/storage"
-    tele "gopkg.in/telebot.v3"
-    "time"
+	"time"
+        
+	"github.com/nlypage/intele/v2"
+	"github.com/nlypage/intele/v2/storage"
+	tele "gopkg.in/telebot.v3"
 )
 
 func main() {
