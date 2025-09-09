@@ -117,7 +117,7 @@ func main() {
 
 ## 📖 Example
 
-See the `examples/` directory for complete working examples
+See the [`examples/`](examples/) directory for complete working examples
 
 ## 🤝 Contributing
 
