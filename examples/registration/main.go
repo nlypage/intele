@@ -15,7 +15,7 @@ import (
 func main() {
 	// Initialize Telegram bot
 	bot, err := tele.NewBot(tele.Settings{
-		Token:     "ENTER_YOUR_BOT_TOKEN",
+		Token:     "YOUR_BOT_TOKEN",
 		Poller:    &tele.LongPoller{Timeout: 10 * time.Second},
 		ParseMode: tele.ModeMarkdown,
 	})
