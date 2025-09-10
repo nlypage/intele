@@ -1,6 +1,6 @@
 module github.com/nlypage/intele/v2
 
-go 1.18
+go 1.22
 
 require (
 	github.com/redis/go-redis/v9 v9.14.0
