@@ -66,12 +66,6 @@ func (bus *FlowBus) Handle(c tele.Context) error {
 		return nil
 	}
 
-	// Clean up expired or cancelled sessions
-	if session.IsCancelled() || session.IsExpired() {
-		bus.cleanupSession(userID)
-		return nil
-	}
-
 	return session.Flow.handleMessage(c, session)
 }
 
@@ -102,6 +96,19 @@ func (bus *FlowBus) Restore() tele.MiddlewareFunc {
 
 			if session != nil {
 				if session.IsExpired() {
+					// Call timeout handler before cleanup
+					if session.Flow.onTimeout != nil {
+						ctrl := &controller{
+							bus:     bus,
+							session: session,
+							teleCtx: c,
+						}
+						if err := session.Flow.onTimeout(c, ctrl); err != nil {
+							log.Printf("Timeout handler error for user %d: %v", userID, err)
+						}
+					}
+
+					// Clean up expired session
 					bus.storage.Delete(fmt.Sprintf("session:%d", userID))
 					return next(c)
 				}
