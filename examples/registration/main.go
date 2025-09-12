@@ -124,7 +124,7 @@ func (l *logger) Debug(message string, args ...interface{}) {
 func main() {
 	// Initialize Telegram bot
 	bot, err := tele.NewBot(tele.Settings{
-		Token:     "7769938663:AAEqwd9KURjViYKm6RU8emzi5Nwzpdzgul8",
+		Token:     "YOUR_BOT_TOKEN",
 		Poller:    &tele.LongPoller{Timeout: 10 * time.Second},
 		ParseMode: tele.ModeMarkdown,
 	})
