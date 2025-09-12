@@ -2,8 +2,10 @@ package intele
 
 import (
 	"fmt"
-	tele "gopkg.in/telebot.v3"
+	"reflect"
 	"time"
+
+	tele "gopkg.in/telebot.v3"
 )
 
 // Flow represents a complete conversation flow with multiple steps.
@@ -34,19 +36,42 @@ func (f *Flow) SetTimeout(timeout time.Duration) {
 
 // SetContainer updates the dependency injection container and validates dependencies.
 func (f *Flow) SetContainer(container Container) error {
-	// Validate that all required dependencies are available
+	// Validate that all required dependencies are available and implement required interfaces
 	for _, step := range f.steps {
-		for _, dep := range step.RequiredDeps {
-			if _, err := container.Get(dep); err != nil {
+		for depName, ifaceType := range step.RequiredDeps {
+			val, err := container.Get(depName)
+			if err != nil {
 				return &ErrMissingDependency{
-					Dependency: dep,
+					Dependency: depName,
 					StepID:     step.ID(),
+				}
+			}
+
+			// Check if dependency implements required interface
+			valType := reflect.TypeOf(val)
+			if !valType.Implements(ifaceType) {
+				return &ErrDependencyInterfaceMismatch{
+					Dependency: depName,
+					StepID:     step.ID(),
+					Interface:  ifaceType.String(),
 				}
 			}
 		}
 	}
 	f.container = container
 	return nil
+}
+
+// Dependencies returns a map of all unique dependencies required by this flow.
+// The keys are dependency names, and the values are string representations of the required interface types.
+func (f *Flow) Dependencies() map[string]string {
+	deps := make(map[string]string)
+	for _, step := range f.steps {
+		for depName, ifaceType := range step.RequiredDeps {
+			deps[depName] = ifaceType.String()
+		}
+	}
+	return deps
 }
 
 // Start initiates a new flow session for a user.
@@ -57,6 +82,7 @@ func (f *Flow) Start(c tele.Context) error {
 	}
 
 	userID := c.Sender().ID
+
 	// Check for existing active session
 	f.bus.mu.Lock()
 	if _, exists := f.bus.sessions[userID]; exists {
@@ -138,6 +164,7 @@ func (f *Flow) executeStep(c tele.Context, session *Session, showHandler bool) e
 	for i := len(step.middlewares) - 1; i >= 0; i-- {
 		handler = step.middlewares[i](handler)
 	}
+
 	for i := len(f.middlewares) - 1; i >= 0; i-- {
 		handler = f.middlewares[i](handler)
 	}
@@ -169,6 +196,7 @@ func (f *Flow) executeStep(c tele.Context, session *Session, showHandler bool) e
 // handleCallback processes callback queries for a step.
 func (f *Flow) handleCallback(c tele.Context, step *Step, ctrl *controller) error {
 	c = ParseCallback(c)
+
 	// Respond to callback to remove loading state
 	if step.HasCallback(c.Callback().Unique) {
 		_ = c.Respond()
@@ -178,6 +206,7 @@ func (f *Flow) handleCallback(c tele.Context, step *Step, ctrl *controller) erro
 	if step.onComplete != nil {
 		return step.onComplete(c, ctrl)
 	}
+
 	return nil
 }
 
@@ -199,5 +228,6 @@ func (f *Flow) handleTimeout(c tele.Context, session *Session) error {
 	if f.onTimeout != nil {
 		return f.onTimeout(c, ctrl)
 	}
+
 	return nil
 }

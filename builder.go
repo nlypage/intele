@@ -3,7 +3,10 @@
 // dependency injection, and middleware support.
 package intele
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
 // FlowBuilder provides a fluent interface for constructing Flow instances.
 // It follows the builder pattern to configure various aspects of a flow
@@ -116,11 +119,22 @@ func (b *FlowBuilder) Build() (*Flow, error) {
 	// Validate dependencies if container is provided
 	if b.container != nil {
 		for _, step := range b.steps {
-			for _, dep := range step.RequiredDeps {
-				if _, err := b.container.Get(dep); err != nil {
+			for depName, ifaceType := range step.RequiredDeps {
+				val, err := b.container.Get(depName)
+				if err != nil {
 					return nil, &ErrMissingDependency{
-						Dependency: dep,
+						Dependency: depName,
 						StepID:     step.ID(),
+					}
+				}
+
+				// Check if dependency implements required interface
+				valType := reflect.TypeOf(val)
+				if !valType.Implements(ifaceType) {
+					return nil, &ErrDependencyInterfaceMismatch{
+						Dependency: depName,
+						StepID:     step.ID(),
+						Interface:  ifaceType.String(),
 					}
 				}
 			}
@@ -141,6 +155,6 @@ func (b *FlowBuilder) Build() (*Flow, error) {
 		onTimeout:   b.onTimeout,
 	}
 
-	b.bus.RegisterFlow(flow)
+	b.bus.RegisterFlows(flow)
 	return flow, nil
 }

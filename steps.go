@@ -1,5 +1,7 @@
 package intele
 
+import "reflect"
+
 // Step represents a single step in a conversation flow.
 // Each step has a handler for displaying content and an optional completion handler for processing user input.
 type Step struct {
@@ -8,15 +10,16 @@ type Step struct {
 	onComplete      StepHandler
 	middlewares     []Middleware
 	callbackUniques []string
-	RequiredDeps    []string
+	RequiredDeps    map[string]reflect.Type
 }
 
 // NewStep creates a new step with the given ID and handler.
 // The handler is called to display the step's content to the user.
 func NewStep(id string, handler StepHandler) *Step {
 	return &Step{
-		id:      id,
-		handler: handler,
+		id:           id,
+		handler:      handler,
+		RequiredDeps: make(map[string]reflect.Type),
 	}
 }
 
@@ -41,10 +44,15 @@ func (s *Step) WithMiddleware(mw Middleware) *Step {
 	return s
 }
 
-// RequireDeps specifies dependencies that must be available in the container for this step.
-// The flow will fail to build if any required dependencies are missing.
-func (s *Step) RequireDeps(deps ...string) *Step {
-	s.RequiredDeps = append(s.RequiredDeps, deps...)
+// RequireDeps specifies dependencies and their required interface types for this step.
+// The flow will fail to build if any required dependencies are missing or don't implement the specified interfaces.
+func (s *Step) RequireDeps(deps DependencyMap) *Step {
+	if s.RequiredDeps == nil {
+		s.RequiredDeps = make(map[string]reflect.Type)
+	}
+	for depName, ifaceType := range deps {
+		s.RequiredDeps[depName] = ifaceType
+	}
 	return s
 }
 

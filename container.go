@@ -1,6 +1,7 @@
 package intele
 
 import (
+	"reflect"
 	"sync"
 )
 
@@ -35,4 +36,21 @@ func (c *container) Set(key string, value interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.data[key] = value
+}
+
+// DependencyMap represents a map of dependency names to their required interface types.
+// It provides a fluent interface for building dependency requirements.
+type DependencyMap map[string]reflect.Type
+
+// NewDeps creates a new empty dependency map.
+func NewDeps() DependencyMap {
+	return make(DependencyMap)
+}
+
+// Require adds a dependency with the specified interface type.
+// The ifacePtr should be a pointer to nil interface, e.g., (*MyInterface)(nil).
+// Returns the map to support method chaining.
+func (dm DependencyMap) Require(depName string, ifacePtr interface{}) DependencyMap {
+	dm[depName] = reflect.TypeOf(ifacePtr).Elem()
+	return dm
 }

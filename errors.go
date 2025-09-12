@@ -40,6 +40,18 @@ func (e ErrMissingDependency) Error() string {
 	return fmt.Sprintf("missing dependency '%s' for step '%s'", e.Dependency, e.StepID)
 }
 
+// ErrDependencyInterfaceMismatch is returned when a dependency doesn't implement the required interface.
+type ErrDependencyInterfaceMismatch struct {
+	Dependency string
+	StepID     string
+	Interface  string
+}
+
+func (e ErrDependencyInterfaceMismatch) Error() string {
+	return fmt.Sprintf("dependency '%s' for step '%s' does not implement required interface '%s'",
+		e.Dependency, e.StepID, e.Interface)
+}
+
 // ErrInvalidStartStep is returned when the specified start step is not found in the flow.
 type ErrInvalidStartStep struct {
 	StepID string

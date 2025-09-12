@@ -36,11 +36,13 @@ func (bus *FlowBus) NewFlow(flowID string) *FlowBuilder {
 	}
 }
 
-// RegisterFlow registers a flow with the bus.
-func (bus *FlowBus) RegisterFlow(flow *Flow) {
+// RegisterFlows registers a flows with the bus.
+func (bus *FlowBus) RegisterFlows(flow ...*Flow) {
 	bus.mu.Lock()
 	defer bus.mu.Unlock()
-	bus.flows[flow.id] = flow
+	for _, f := range flow {
+		bus.flows[f.id] = f
+	}
 }
 
 // GetFlow retrieves a flow by its ID.
